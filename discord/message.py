@@ -330,8 +330,7 @@ class Attachment(Hashable):
             The contents of the attachment.
         """
         url = self.proxy_url if use_cached else self.url
-        data = await self._http.get_from_cdn(url)
-        return data
+        return await self._http.get_from_cdn(url)
 
     async def to_file(
         self,
@@ -2056,23 +2055,23 @@ class Message(PartialMessage, Hashable):
             return formats[created_at_ms % len(formats)].format(self.author.name)
 
         if self.type is MessageType.premium_guild_subscription:
-            if not self.content:
-                return f'{self.author.name} just boosted the server!'
-            else:
+            if self.content:
                 return f'{self.author.name} just boosted the server **{self.content}** times!'
 
-        if self.type is MessageType.premium_guild_tier_1:
-            if not self.content:
-                return f'{self.author.name} just boosted the server! {self.guild} has achieved **Level 1!**'
             else:
+                return f'{self.author.name} just boosted the server!'
+        if self.type is MessageType.premium_guild_tier_1:
+            if self.content:
                 return f'{self.author.name} just boosted the server **{self.content}** times! {self.guild} has achieved **Level 1!**'
 
-        if self.type is MessageType.premium_guild_tier_2:
-            if not self.content:
-                return f'{self.author.name} just boosted the server! {self.guild} has achieved **Level 2!**'
             else:
+                return f'{self.author.name} just boosted the server! {self.guild} has achieved **Level 1!**'
+        if self.type is MessageType.premium_guild_tier_2:
+            if self.content:
                 return f'{self.author.name} just boosted the server **{self.content}** times! {self.guild} has achieved **Level 2!**'
 
+            else:
+                return f'{self.author.name} just boosted the server! {self.guild} has achieved **Level 2!**'
         if self.type is MessageType.premium_guild_tier_3:
             if not self.content:
                 return f'{self.author.name} just boosted the server! {self.guild} has achieved **Level 3!**'

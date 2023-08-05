@@ -223,9 +223,7 @@ class TextChannel(discord.abc.Messageable, discord.abc.GuildChannel, Hashable):
     @property
     def type(self) -> Literal[ChannelType.text, ChannelType.news]:
         """:class:`ChannelType`: The channel's Discord type."""
-        if self._type == 0:
-            return ChannelType.text
-        return ChannelType.news
+        return ChannelType.text if self._type == 0 else ChannelType.news
 
     @property
     def _sorting_bucket(self) -> int:
@@ -602,7 +600,9 @@ class TextChannel(discord.abc.Messageable, discord.abc.GuildChannel, Hashable):
         if avatar is not None:
             avatar = utils._bytes_to_base64_data(avatar)  # type: ignore # Silence reassignment error
 
-        data = await self._state.http.create_webhook(self.id, name=str(name), avatar=avatar, reason=reason)
+        data = await self._state.http.create_webhook(
+            self.id, name=name, avatar=avatar, reason=reason
+        )
         return Webhook.from_state(data, state=self._state)
 
     async def follow(self, *, destination: TextChannel, reason: Optional[str] = None) -> Webhook:
@@ -1246,7 +1246,9 @@ class VocalGuildChannel(discord.abc.Messageable, discord.abc.Connectable, discor
         if avatar is not None:
             avatar = utils._bytes_to_base64_data(avatar)  # type: ignore # Silence reassignment error
 
-        data = await self._state.http.create_webhook(self.id, name=str(name), avatar=avatar, reason=reason)
+        data = await self._state.http.create_webhook(
+            self.id, name=name, avatar=avatar, reason=reason
+        )
         return Webhook.from_state(data, state=self._state)
 
 
@@ -2096,10 +2098,10 @@ class ForumTag(Hashable):
 
         emoji_name = data['emoji_name'] or ''
         emoji_id = utils._get_as_snowflake(data, 'emoji_id') or None  # Coerce 0 -> None
-        if not emoji_name and not emoji_id:
-            self.emoji = None
-        else:
+        if emoji_name or emoji_id:
             self.emoji = PartialEmoji.with_state(state=state, name=emoji_name, id=emoji_id)
+        else:
+            self.emoji = None
         return self
 
     def to_dict(self) -> Dict[str, Any]:
@@ -2108,7 +2110,7 @@ class ForumTag(Hashable):
             'moderated': self.moderated,
         }
         if self.emoji is not None:
-            payload.update(self.emoji._to_forum_tag_payload())
+            payload |= self.emoji._to_forum_tag_payload()
         else:
             payload.update(emoji_id=None, emoji_name=None)
 
@@ -2253,8 +2255,7 @@ class ForumChannel(discord.abc.GuildChannel, Hashable):
         self._available_tags: Dict[int, ForumTag] = {tag.id: tag for tag in tags}
 
         self.default_reaction_emoji: Optional[PartialEmoji] = None
-        default_reaction_emoji = data.get('default_reaction_emoji')
-        if default_reaction_emoji:
+        if default_reaction_emoji := data.get('default_reaction_emoji'):
             self.default_reaction_emoji = PartialEmoji.with_state(
                 state=self._state,
                 id=utils._get_as_snowflake(default_reaction_emoji, 'emoji_id') or None,  # Coerce 0 -> None
@@ -2272,9 +2273,7 @@ class ForumChannel(discord.abc.GuildChannel, Hashable):
     @property
     def type(self) -> Literal[ChannelType.forum, ChannelType.media]:
         """:class:`ChannelType`: The channel's Discord type."""
-        if self._type == 16:
-            return ChannelType.media
-        return ChannelType.forum
+        return ChannelType.media if self._type == 16 else ChannelType.forum
 
     @property
     def _sorting_bucket(self) -> int:
@@ -2315,9 +2314,7 @@ class ForumChannel(discord.abc.GuildChannel, Hashable):
             The returned thread or ``None`` if not found.
         """
         thread = self.guild.get_thread(thread_id)
-        if thread is not None and thread.parent_id == self.id:
-            return thread
-        return None
+        return thread if thread is not None and thread.parent_id == self.id else None
 
     @property
     def threads(self) -> List[Thread]:
@@ -2533,13 +2530,13 @@ class ForumChannel(discord.abc.GuildChannel, Hashable):
         else:
             if sort_order is None:
                 options['default_sort_order'] = None
-            else:
-                if not isinstance(sort_order, ForumOrderType):
-                    raise TypeError(
-                        f'default_sort_order parameter must be a ForumOrderType not {sort_order.__class__.__name__}'
-                    )
-
+            elif isinstance(sort_order, ForumOrderType):
                 options['default_sort_order'] = sort_order.value
+
+            else:
+                raise TypeError(
+                    f'default_sort_order parameter must be a ForumOrderType not {sort_order.__class__.__name__}'
+                )
 
         payload = await self._edit(options, reason=reason)
         if payload is not None:
@@ -2804,7 +2801,9 @@ class ForumChannel(discord.abc.GuildChannel, Hashable):
         if avatar is not None:
             avatar = utils._bytes_to_base64_data(avatar)  # type: ignore # Silence reassignment error
 
-        data = await self._state.http.create_webhook(self.id, name=str(name), avatar=avatar, reason=reason)
+        data = await self._state.http.create_webhook(
+            self.id, name=name, avatar=avatar, reason=reason
+        )
         return Webhook.from_state(data, state=self._state)
 
     async def archived_threads(

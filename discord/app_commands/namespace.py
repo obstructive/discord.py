@@ -152,11 +152,7 @@ class Namespace:
                 if value is None or value == '':
                     self.__dict__[name] = float('nan')
                 else:
-                    if not focused:
-                        self.__dict__[name] = float(value)
-                    else:
-                        # Autocomplete focused values tend to be garbage in
-                        self.__dict__[name] = value
+                    self.__dict__[name] = float(value) if not focused else value
             elif opt_type in (6, 7, 8, 9, 11):
                 # Remaining ones should be snowflake based ones with resolved data
                 snowflake: str = option['value']  # type: ignore # Key is there
@@ -194,13 +190,11 @@ class Namespace:
                 completed[ResolveKey(id=user_id, type=type)] = member
 
         type = AppCommandOptionType.role.value
-        completed.update(
-            {
-                # The guild ID can't be None in this case.
-                ResolveKey(id=role_id, type=type): Role(guild=guild, state=state, data=role_data)  # type: ignore
-                for role_id, role_data in resolved.get('roles', {}).items()
-            }
-        )
+        completed |= {
+            # The guild ID can't be None in this case.
+            ResolveKey(id=role_id, type=type): Role(guild=guild, state=state, data=role_data)  # type: ignore
+            for role_id, role_data in resolved.get('roles', {}).items()
+        }
 
         type = AppCommandOptionType.channel.value
         for (channel_id, channel_data) in resolved.get('channels', {}).items():
@@ -213,12 +207,14 @@ class Namespace:
                 completed[key] = AppCommandChannel(state=state, data=channel_data, guild_id=guild_id)  # type: ignore
 
         type = AppCommandOptionType.attachment.value
-        completed.update(
-            {
-                ResolveKey(id=attachment_id, type=type): Attachment(data=attachment_data, state=state)
-                for attachment_id, attachment_data in resolved.get('attachments', {}).items()
-            }
-        )
+        completed |= {
+            ResolveKey(id=attachment_id, type=type): Attachment(
+                data=attachment_data, state=state
+            )
+            for attachment_id, attachment_data in resolved.get(
+                'attachments', {}
+            ).items()
+        }
 
         guild = state._get_guild(guild_id)
         for (message_id, message_data) in resolved.get('messages', {}).items():
@@ -239,7 +235,7 @@ class Namespace:
 
     def __repr__(self) -> str:
         items = (f'{k}={v!r}' for k, v in self.__dict__.items())
-        return '<{} {}>'.format(self.__class__.__name__, ' '.join(items))
+        return f"<{self.__class__.__name__} {' '.join(items)}>"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(self, Namespace) and isinstance(other, Namespace):

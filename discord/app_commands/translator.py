@@ -293,8 +293,7 @@ class locale_str:
         return self.__message
 
     def __repr__(self) -> str:
-        kwargs = ', '.join(f'{k}={v!r}' for k, v in self.extras.items())
-        if kwargs:
+        if kwargs := ', '.join(f'{k}={v!r}' for k, v in self.extras.items()):
             return f'{self.__class__.__name__}({self.__message!r}, {kwargs})'
         return f'{self.__class__.__name__}({self.__message!r})'
 

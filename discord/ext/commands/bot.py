@@ -202,12 +202,12 @@ class BotBase(GroupMixin[None]):
     async def _async_setup_hook(self) -> None:
         # self/super() resolves to Client/AutoShardedClient
         await super()._async_setup_hook()  # type: ignore
-        prefix = self.command_prefix
-
         # This has to be here because for the default logging set up to capture
         # the logging calls, they have to come after the `Client.run` call.
         # The best place to do this is in an async init scenario
         if not self.intents.message_content:  # type: ignore
+            prefix = self.command_prefix
+
             trigger_warning = (
                 (callable(prefix) and prefix is not when_mentioned)
                 or isinstance(prefix, str)
@@ -219,7 +219,7 @@ class BotBase(GroupMixin[None]):
     def dispatch(self, event_name: str, /, *args: Any, **kwargs: Any) -> None:
         # super() will resolve to Client
         super().dispatch(event_name, *args, **kwargs)  # type: ignore
-        ev = 'on_' + event_name
+        ev = f'on_{event_name}'
         for event in self.extra_events.get(ev, []):
             self._schedule_event(event, ev, *args, **kwargs)  # type: ignore
 
@@ -898,11 +898,12 @@ class BotBase(GroupMixin[None]):
 
         # remove all the listeners from the module
         for event_list in self.extra_events.copy().values():
-            remove = []
-            for index, event in enumerate(event_list):
-                if event.__module__ is not None and _is_submodule(name, event.__module__):
-                    remove.append(index)
-
+            remove = [
+                index
+                for index, event in enumerate(event_list)
+                if event.__module__ is not None
+                and _is_submodule(name, event.__module__)
+            ]
             for index in reversed(remove):
                 del event_list[index]
 

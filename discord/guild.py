@@ -761,9 +761,7 @@ class Guild(Hashable):
             The returned Emoji or ``None`` if not found.
         """
         emoji = self._state.get_emoji(emoji_id)
-        if emoji and emoji.guild == self:
-            return emoji
-        return None
+        return emoji if emoji and emoji.guild == self else None
 
     @property
     def afk_channel(self) -> Optional[VocalGuildChannel]:
@@ -930,10 +928,14 @@ class Guild(Hashable):
 
         .. versionadded:: 1.6
         """
-        for role in self._roles.values():
-            if role.is_premium_subscriber():
-                return role
-        return None
+        return next(
+            (
+                role
+                for role in self._roles.values()
+                if role.is_premium_subscriber()
+            ),
+            None,
+        )
 
     @property
     def self_role(self) -> Optional[Role]:
@@ -1058,17 +1060,13 @@ class Guild(Hashable):
         offline members.
         """
         count = self._member_count
-        if count is None:
-            return False
-        return count == len(self._members)
+        return False if count is None else count == len(self._members)
 
     @property
     def shard_id(self) -> int:
         """:class:`int`: Returns the shard ID for this guild if applicable."""
         count = self._state.shard_count
-        if count is None:
-            return 0
-        return (self.id >> 22) % count
+        return 0 if count is None else (self.id >> 22) % count
 
     @property
     def created_at(self) -> datetime.datetime:
@@ -1231,12 +1229,14 @@ class Guild(Hashable):
                 raise TypeError(f'Expected PermissionOverwrite received {perm.__class__.__name__}')
 
             allow, deny = perm.pair()
-            payload = {'allow': allow.value, 'deny': deny.value, 'id': target.id}
-
-            if isinstance(target, Role):
-                payload['type'] = abc._Overwrites.ROLE
-            else:
-                payload['type'] = abc._Overwrites.MEMBER
+            payload = {
+                'allow': allow.value,
+                'deny': deny.value,
+                'id': target.id,
+                'type': abc._Overwrites.ROLE
+                if isinstance(target, Role)
+                else abc._Overwrites.MEMBER,
+            }
 
             perms.append(payload)
 
@@ -1756,7 +1756,9 @@ class Guild(Hashable):
             elif isinstance(default_reaction_emoji, str):
                 options['default_reaction_emoji'] = PartialEmoji.from_str(default_reaction_emoji)._to_forum_tag_payload()
             else:
-                raise ValueError(f'default_reaction_emoji parameter must be either Emoji, PartialEmoji, or str')
+                raise ValueError(
+                    'default_reaction_emoji parameter must be either Emoji, PartialEmoji, or str'
+                )
 
         if default_layout is not MISSING:
             if not isinstance(default_layout, ForumLayoutType):

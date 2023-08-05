@@ -180,7 +180,7 @@ class Loop(Generic[LF]):
             raise TypeError(f'Expected coroutine function, not {type(self.coro).__name__!r}.')
 
     async def _call_loop_function(self, name: str, *args: Any, **kwargs: Any) -> None:
-        coro = getattr(self, '_' + name)
+        coro = getattr(self, f'_{name}')
         if coro is None:
             return
 
@@ -695,8 +695,7 @@ class Loop(Generic[LF]):
                 )
             ret.append(t if t.tzinfo is not None else t.replace(tzinfo=utc))
 
-        ret = sorted(set(ret))  # de-dupe and sort times
-        return ret
+        return sorted(set(ret))
 
     def change_interval(
         self,

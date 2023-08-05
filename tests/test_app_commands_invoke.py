@@ -70,11 +70,10 @@ class MockCommandInteraction(discord.Interaction):
             'options': options,
         }
 
-        if command.parent is None:
-            data['id'] = hash(command)  # type: ignore # narrowing isn't possible
-            return data  # type: ignore # see above
-        else:
+        if command.parent is not None:
             return cls._get_command_data(command.parent, [data])
+        data['id'] = hash(command)  # type: ignore # narrowing isn't possible
+        return data  # type: ignore # see above
 
     def __init__(
         self,

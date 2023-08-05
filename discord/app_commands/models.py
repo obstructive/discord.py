@@ -588,9 +588,7 @@ class AppCommandChannel(Hashable):
             The resolved guild channel or ``None`` if not found in cache.
         """
         guild = self._state._get_guild(self.guild_id)
-        if guild is not None:
-            return guild.get_channel(self.id)
-        return None
+        return guild.get_channel(self.id) if guild is not None else None
 
     async def fetch(self) -> GuildChannel:
         """|coro|
@@ -762,9 +760,7 @@ class AppCommandThread(Hashable):
             The resolved guild channel or ``None`` if not found in cache.
         """
         guild = self._state._get_guild(self.guild_id)
-        if guild is not None:
-            return guild.get_thread(self.id)
-        return None
+        return guild.get_thread(self.id) if guild is not None else None
 
     async def fetch(self) -> Thread:
         """|coro|

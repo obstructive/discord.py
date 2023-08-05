@@ -229,8 +229,7 @@ class AutoModTrigger:
         self.regex_patterns: List[str] = regex_patterns if regex_patterns is not None else []
 
     def __repr__(self) -> str:
-        data = self.to_metadata_dict()
-        if data:
+        if data := self.to_metadata_dict():
             joined = ' '.join(f'{k}={v!r}' for k, v in data.items())
             return f'<AutoModTrigger type={self.type} {joined}>'
 

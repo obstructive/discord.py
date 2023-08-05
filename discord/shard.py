@@ -456,8 +456,6 @@ class AutoShardedClient(Client):
                 if isinstance(item.error, ConnectionClosed):
                     if item.error.code != 1000:
                         raise item.error
-                    if item.error.code == 4014:
-                        raise PrivilegedIntentsRequired(item.shard.id) from None
                 return
             elif item.type in (EventType.identify, EventType.resume):
                 await item.shard.reidentify(item.error)
@@ -480,8 +478,10 @@ class AutoShardedClient(Client):
         self._closed = True
         await self._connection.close()
 
-        to_close = [asyncio.ensure_future(shard.close(), loop=self.loop) for shard in self.__shards.values()]
-        if to_close:
+        if to_close := [
+            asyncio.ensure_future(shard.close(), loop=self.loop)
+            for shard in self.__shards.values()
+        ]:
             await asyncio.wait(to_close)
 
         await self.http.close()

@@ -207,11 +207,10 @@ class Interaction(Generic[ClientT]):
             factory, ch_type = _threaded_channel_factory(raw_ch_type)  # type is never None
             if factory is None:
                 logging.info('Unknown channel type {type} for channel ID {id}.'.format_map(raw_channel))
-            else:
-                if ch_type in (ChannelType.group, ChannelType.private):
-                    self.channel = factory(me=self._client.user, data=raw_channel, state=self._state)  # type: ignore
-                elif guild is not None:
-                    self.channel = factory(guild=guild, state=self._state, data=raw_channel)  # type: ignore
+            elif ch_type in (ChannelType.group, ChannelType.private):
+                self.channel = factory(me=self._client.user, data=raw_channel, state=self._state)  # type: ignore
+            elif guild is not None:
+                self.channel = factory(guild=guild, state=self._state, data=raw_channel)  # type: ignore
 
         self.message: Optional[Message]
         try:
@@ -316,15 +315,14 @@ class Interaction(Generic[ClientT]):
         # The type checker does not understand this narrowing
         data: ApplicationCommandInteractionData = self.data  # type: ignore
         cmd_type = data.get('type', 1)
-        if cmd_type == 1:
-            try:
-                command, _ = tree._get_app_command_options(data)
-            except DiscordException:
-                return None
-            else:
-                return command
-        else:
+        if cmd_type != 1:
             return tree._get_context_menu(data)
+        try:
+            command, _ = tree._get_app_command_options(data)
+        except DiscordException:
+            return None
+        else:
+            return command
 
     @utils.cached_slot_property('_cs_response')
     def response(self) -> InteractionResponse[ClientT]:

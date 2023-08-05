@@ -562,23 +562,11 @@ def interaction_message_response_params(
         data['embeds'] = [e.to_dict() for e in embeds]
 
     if embed is not MISSING:
-        if embed is None:
-            data['embeds'] = []
-        else:
-            data['embeds'] = [embed.to_dict()]
-
+        data['embeds'] = [] if embed is None else [embed.to_dict()]
     if content is not MISSING:
-        if content is not None:
-            data['content'] = str(content)
-        else:
-            data['content'] = None
-
+        data['content'] = str(content) if content is not None else None
     if view is not MISSING:
-        if view is not None:
-            data['components'] = view.to_components()
-        else:
-            data['components'] = []
-
+        data['components'] = view.to_components() if view is not None else []
     if flags is not MISSING:
         data['flags'] = flags.value
 
@@ -612,15 +600,15 @@ def interaction_message_response_params(
         data = {'type': type, 'data': data}
         multipart.append({'name': 'payload_json', 'value': utils._to_json(data)})
         data = None
-        for index, file in enumerate(files):
-            multipart.append(
-                {
-                    'name': f'files[{index}]',
-                    'value': file.fp,
-                    'filename': file.filename,
-                    'content_type': 'application/octet-stream',
-                }
-            )
+        multipart.extend(
+            {
+                'name': f'files[{index}]',
+                'value': file.fp,
+                'filename': file.filename,
+                'content_type': 'application/octet-stream',
+            }
+            for index, file in enumerate(files)
+        )
     else:
         data = {'type': type, 'data': data}
 
@@ -703,17 +691,11 @@ class _WebhookState:
         self._webhook: Any = webhook
 
         self._parent: Optional[ConnectionState]
-        if isinstance(parent, _WebhookState):
-            self._parent = None
-        else:
-            self._parent = parent
-
+        self._parent = None if isinstance(parent, _WebhookState) else parent
         self._thread: Snowflake = thread
 
     def _get_guild(self, guild_id: Optional[int]) -> Optional[Guild]:
-        if self._parent is not None:
-            return self._parent._get_guild(guild_id)
-        return None
+        return self._parent._get_guild(guild_id) if self._parent is not None else None
 
     def store_user(self, data: Union[UserPayload, PartialUserPayload], *, cache: bool = True) -> BaseUser:
         if self._parent is not None:
@@ -733,13 +715,11 @@ class _WebhookState:
         if self._parent is not None:
             return self._parent.get_reaction_emoji(data)
 
-        emoji_id = utils._get_as_snowflake(data, 'id')
-
-        if not emoji_id:
+        if emoji_id := utils._get_as_snowflake(data, 'id'):
+            return PartialEmoji(animated=data.get('animated', False), id=emoji_id, name=data['name'])  # type: ignore
+        else:
             # the name key will be a str
             return data['name']  # type: ignore
-
-        return PartialEmoji(animated=data.get('animated', False), id=emoji_id, name=data['name'])  # type: ignore
 
     @property
     def http(self) -> Union[HTTPClient, _FriendlyHttpAttributeErrorHelper]:
@@ -1552,10 +1532,10 @@ class Webhook(BaseWebhook):
 
     def _create_message(self, data, *, thread: Snowflake):
         state = _WebhookState(self, parent=self._state, thread=thread)
+        channel = self.channel
         # state may be artificial (unlikely at this point...)
         if thread is MISSING:
             channel_id = int(data['channel_id'])
-            channel = self.channel
             # If this thread is created via thread_name then the channel_id would not be the same as the webhook's channel_id
             # which would be the forum channel.
             if self.channel_id != channel_id:
@@ -1564,7 +1544,6 @@ class Webhook(BaseWebhook):
             else:
                 channel = self.channel or PartialMessageable(state=self._state, guild_id=self.guild_id, id=channel_id)  # type: ignore
         else:
-            channel = self.channel
             if isinstance(channel, (ForumChannel, TextChannel)):
                 channel = channel.get_thread(thread.id)
 
@@ -1776,32 +1755,29 @@ class Webhook(BaseWebhook):
             if not hasattr(view, '__discord_ui_view__'):
                 raise TypeError(f'expected view parameter to be of type View not {view.__class__.__name__}')
 
-            if ephemeral is True and view.timeout is None:
+            if ephemeral and view.timeout is None:
                 view.timeout = 15 * 60.0
 
         if thread_name is not MISSING and thread is not MISSING:
             raise TypeError('Cannot mix thread_name and thread keyword arguments.')
 
         with handle_message_parameters(
-            content=content,
-            username=username,
-            avatar_url=avatar_url,
-            tts=tts,
-            file=file,
-            files=files,
-            embed=embed,
-            embeds=embeds,
-            flags=flags,
-            view=view,
-            thread_name=thread_name,
-            allowed_mentions=allowed_mentions,
-            previous_allowed_mentions=previous_mentions,
-        ) as params:
+                content=content,
+                username=username,
+                avatar_url=avatar_url,
+                tts=tts,
+                file=file,
+                files=files,
+                embed=embed,
+                embeds=embeds,
+                flags=flags,
+                view=view,
+                thread_name=thread_name,
+                allowed_mentions=allowed_mentions,
+                previous_allowed_mentions=previous_mentions,
+            ) as params:
             adapter = async_context.get()
-            thread_id: Optional[int] = None
-            if thread is not MISSING:
-                thread_id = thread.id
-
+            thread_id = thread.id if thread is not MISSING else None
             data = await adapter.execute_webhook(
                 self.id,
                 self.token,
@@ -1815,10 +1791,7 @@ class Webhook(BaseWebhook):
                 wait=wait,
             )
 
-        msg = None
-        if wait:
-            msg = self._create_message(data, thread=thread)
-
+        msg = self._create_message(data, thread=thread) if wait else None
         if view is not MISSING and not view.is_finished():
             message_id = None if msg is None else msg.id
             self._state.store_view(view, message_id)
@@ -1859,10 +1832,7 @@ class Webhook(BaseWebhook):
         if self.token is None:
             raise ValueError('This webhook does not have a token associated with it')
 
-        thread_id: Optional[int] = None
-        if thread is not MISSING:
-            thread_id = thread.id
-
+        thread_id = thread.id if thread is not MISSING else None
         adapter = async_context.get()
         data = await adapter.get_webhook_message(
             self.id,
@@ -1963,18 +1933,15 @@ class Webhook(BaseWebhook):
 
         previous_mentions: Optional[AllowedMentions] = getattr(self._state, 'allowed_mentions', None)
         with handle_message_parameters(
-            content=content,
-            attachments=attachments,
-            embed=embed,
-            embeds=embeds,
-            view=view,
-            allowed_mentions=allowed_mentions,
-            previous_allowed_mentions=previous_mentions,
-        ) as params:
-            thread_id: Optional[int] = None
-            if thread is not MISSING:
-                thread_id = thread.id
-
+                content=content,
+                attachments=attachments,
+                embed=embed,
+                embeds=embeds,
+                view=view,
+                allowed_mentions=allowed_mentions,
+                previous_allowed_mentions=previous_mentions,
+            ) as params:
+            thread_id = thread.id if thread is not MISSING else None
             adapter = async_context.get()
             data = await adapter.edit_webhook_message(
                 self.id,
@@ -2033,10 +2000,7 @@ class Webhook(BaseWebhook):
         if self.token is None:
             raise ValueError('This webhook does not have a token associated with it')
 
-        thread_id: Optional[int] = None
-        if thread is not MISSING:
-            thread_id = thread.id
-
+        thread_id = thread.id if thread is not MISSING else None
         adapter = async_context.get()
         await adapter.delete_webhook_message(
             self.id,

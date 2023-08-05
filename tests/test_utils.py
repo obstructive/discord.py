@@ -183,7 +183,7 @@ def test_escape_mentions(mention):
     ],
 )
 async def test_as_chunks(source, chunk_size, chunked):
-    assert [x for x in utils.as_chunks(source, chunk_size)] == chunked
+    assert list(utils.as_chunks(source, chunk_size)) == chunked
     assert [x async for x in utils.as_chunks(async_iterate(source), chunk_size)] == chunked
 
 
@@ -228,7 +228,7 @@ def test_resolve_annotation_with_cache(annotation, resolved, check_cache):
         assert latest is cached_item
         assert typing.get_origin(latest) is typing.get_origin(resolved)
     else:
-        assert len(cache) == 0
+        assert not cache
 
 
 def test_resolve_annotation_optional_normalisation():

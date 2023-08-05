@@ -244,11 +244,10 @@ class CogMeta(type):
 
         listeners_as_list = []
         for listener in listeners.values():
-            for listener_name in listener.__cog_listener_names__:
-                # I use __name__ instead of just storing the value so I can inject
-                # the self attribute when the time comes to add them to the bot
-                listeners_as_list.append((listener_name, listener.__name__))
-
+            listeners_as_list.extend(
+                (listener_name, listener.__name__)
+                for listener_name in listener.__cog_listener_names__
+            )
         new_cls.__cog_listeners__ = listeners_as_list
         return new_cls
 
@@ -336,10 +335,7 @@ class Cog(metaclass=CogMeta):
                 parent.add_command(command)  # type: ignore
 
             if hasattr(command, '__commands_is_hybrid__') and parent is None:
-                app_command: Optional[Union[app_commands.Group, app_commands.Command[Self, ..., Any]]] = getattr(
-                    command, 'app_command', None
-                )
-                if app_command:
+                if app_command := getattr(command, 'app_command', None):
                     group_parent = self.__cog_app_commands_group__
                     app_command = app_command._copy_with(parent=group_parent, binding=self)
                     # The type checker does not see the app_command attribute even though it exists

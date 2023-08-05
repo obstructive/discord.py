@@ -503,11 +503,11 @@ class ScheduledEvent(Hashable):
                     entity_type = EntityType.stage_instance
             elif location not in (MISSING, None):
                 entity_type = EntityType.external
-        else:
-            if not isinstance(entity_type, EntityType):
-                raise TypeError('entity_type must be of type EntityType')
-
+        elif isinstance(entity_type, EntityType):
             payload['entity_type'] = entity_type.value
+
+        else:
+            raise TypeError('entity_type must be of type EntityType')
 
         if entity_type is None:
             raise TypeError(
@@ -542,15 +542,15 @@ class ScheduledEvent(Hashable):
                 raise TypeError('end_time must be set when entity_type is external')
 
         if end_time is not MISSING:
-            if end_time is not None:
-                if end_time.tzinfo is None:
-                    raise ValueError(
-                        'end_time must be an aware datetime. Consider using discord.utils.utcnow() or datetime.datetime.now().astimezone() for local time.'
-                    )
-                payload['scheduled_end_time'] = end_time.isoformat()
-            else:
+            if end_time is None:
                 payload['scheduled_end_time'] = end_time
 
+            elif end_time.tzinfo is None:
+                raise ValueError(
+                    'end_time must be an aware datetime. Consider using discord.utils.utcnow() or datetime.datetime.now().astimezone() for local time.'
+                )
+            else:
+                payload['scheduled_end_time'] = end_time.isoformat()
         if metadata:
             payload['entity_metadata'] = metadata
 
@@ -637,11 +637,7 @@ class ScheduledEvent(Hashable):
         if limit is None:
             limit = self.user_count or None
 
-        if oldest_first is MISSING:
-            reverse = after is not None
-        else:
-            reverse = oldest_first
-
+        reverse = after is not None if oldest_first is MISSING else oldest_first
         predicate = None
 
         if reverse:

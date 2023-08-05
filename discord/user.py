@@ -216,9 +216,7 @@ class BaseUser(_UserTag):
 
             This information is only available via :meth:`Client.fetch_user`.
         """
-        if self._accent_colour is None:
-            return None
-        return Colour(self._accent_colour)
+        return None if self._accent_colour is None else Colour(self._accent_colour)
 
     @property
     def accent_color(self) -> Optional[Colour]:
@@ -276,9 +274,7 @@ class BaseUser(_UserTag):
         but if they have a guild specific nickname then that
         is returned instead.
         """
-        if self.global_name:
-            return self.global_name
-        return self.name
+        return self.global_name if self.global_name else self.name
 
     def mentioned_in(self, message: Message) -> bool:
         """Checks if the user is mentioned in the specified message.
@@ -419,11 +415,7 @@ class ClientUser(BaseUser):
             payload['username'] = username
 
         if avatar is not MISSING:
-            if avatar is not None:
-                payload['avatar'] = _bytes_to_base64_data(avatar)
-            else:
-                payload['avatar'] = None
-
+            payload['avatar'] = None if avatar is None else _bytes_to_base64_data(avatar)
         data: UserPayload = await self._state.http.edit_profile(payload)
         return ClientUser(state=self._state, data=data)
 
@@ -485,8 +477,7 @@ class User(BaseUser, discord.abc.Messageable):
         return f'<User id={self.id} name={self.name!r} global_name={self.global_name!r} bot={self.bot}>'
 
     async def _get_channel(self) -> DMChannel:
-        ch = await self.create_dm()
-        return ch
+        return await self.create_dm()
 
     @property
     def dm_channel(self) -> Optional[DMChannel]:

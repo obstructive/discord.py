@@ -185,9 +185,7 @@ class PartialEmoji(_EmojiTag, AssetMixin):
         name = self.name or '_'
         if self.id is None:
             return name
-        if self.animated:
-            return f'<a:{name}:{self.id}>'
-        return f'<:{name}:{self.id}>'
+        return f'<a:{name}:{self.id}>' if self.animated else f'<:{name}:{self.id}>'
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} animated={self.animated} name={self.name!r} id={self.id}>'
@@ -196,9 +194,7 @@ class PartialEmoji(_EmojiTag, AssetMixin):
         if self.is_unicode_emoji():
             return isinstance(other, PartialEmoji) and self.name == other.name
 
-        if isinstance(other, _EmojiTag):
-            return self.id == other.id
-        return False
+        return self.id == other.id if isinstance(other, _EmojiTag) else False
 
     def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
@@ -215,9 +211,7 @@ class PartialEmoji(_EmojiTag, AssetMixin):
         return self.id is None
 
     def _as_reaction(self) -> str:
-        if self.id is None:
-            return self.name
-        return f'{self.name}:{self.id}'
+        return self.name if self.id is None else f'{self.name}:{self.id}'
 
     @property
     def created_at(self) -> Optional[datetime]:
@@ -225,10 +219,7 @@ class PartialEmoji(_EmojiTag, AssetMixin):
 
         .. versionadded:: 1.6
         """
-        if self.id is None:
-            return None
-
-        return utils.snowflake_time(self.id)
+        return None if self.id is None else utils.snowflake_time(self.id)
 
     @property
     def url(self) -> str:

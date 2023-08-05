@@ -299,10 +299,7 @@ class Transformer:
     @property
     def _error_display_name(self) -> str:
         name = self.__class__.__name__
-        if name.endswith('Transformer'):
-            return name[:-11]
-        else:
-            return name
+        return name[:-11] if name.endswith('Transformer') else name
 
     async def transform(self, interaction: Interaction, value: Any, /) -> Any:
         """|maybecoro|
@@ -598,17 +595,12 @@ else:
             else:
                 raise TypeError(f'expected int, float, or str as range type, received {obj_type!r} instead')
 
-            if obj_type in (str, int):
-                cast = int
-            else:
-                cast = float
-
-            transformer = RangeTransformer(
+            cast = int if obj_type in (str, int) else float
+            return RangeTransformer(
                 opt_type,
                 min=cast(min) if min is not None else None,
                 max=cast(max) if max is not None else None,
             )
-            return transformer
 
 
 class MemberTransformer(Transformer):
@@ -629,7 +621,7 @@ class BaseChannelTransformer(Transformer):
             display_name = channel_types[0].__name__
             types = CHANNEL_TO_TYPES[channel_types[0]]
         else:
-            display_name = '{}, and {}'.format(', '.join(t.__name__ for t in channel_types[:-1]), channel_types[-1].__name__)
+            display_name = f"{', '.join(t.__name__ for t in channel_types[:-1])}, and {channel_types[-1].__name__}"
             types = []
 
             for t in channel_types:
@@ -814,9 +806,9 @@ def get_supported_annotation(
     # [Member, User, Role] => mentionable
     # [Member | User, Role] => mentionable
     supported_types: Set[Any] = {Role, Member, User}
-    if not all(arg in supported_types for arg in args):
+    if any(arg not in supported_types for arg in args):
         raise TypeError(f'unsupported types given inside {annotation!r}')
-    if args == (User, Member) or args == (Member, User):
+    if args in [(User, Member), (Member, User)]:
         return (IdentityTransformer(AppCommandOptionType.user), default, True)
 
     return (IdentityTransformer(AppCommandOptionType.mentionable), default, True)

@@ -186,7 +186,7 @@ class BaseSelect(Item[V]):
 
     @min_values.setter
     def min_values(self, value: int) -> None:
-        self._underlying.min_values = int(value)
+        self._underlying.min_values = value
 
     @property
     def max_values(self) -> int:
@@ -195,7 +195,7 @@ class BaseSelect(Item[V]):
 
     @max_values.setter
     def max_values(self, value: int) -> None:
-        self._underlying.max_values = int(value)
+        self._underlying.max_values = value
 
     @property
     def disabled(self) -> bool:
@@ -204,7 +204,7 @@ class BaseSelect(Item[V]):
 
     @disabled.setter
     def disabled(self, value: bool) -> None:
-        self._underlying.disabled = bool(value)
+        self._underlying.disabled = value
 
     @property
     def width(self) -> int:

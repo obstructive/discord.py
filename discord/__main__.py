@@ -37,14 +37,16 @@ import platform
 
 
 def show_version() -> None:
-    entries = []
+    entries = [
+        '- Python v{0.major}.{0.minor}.{0.micro}-{0.releaselevel}'.format(
+            sys.version_info
+        )
+    ]
 
-    entries.append('- Python v{0.major}.{0.minor}.{0.micro}-{0.releaselevel}'.format(sys.version_info))
     version_info = discord.version_info
     entries.append('- discord.py v{0.major}.{0.minor}.{0.micro}-{0.releaselevel}'.format(version_info))
     if version_info.releaselevel != 'final':
-        version = importlib.metadata.version('discord.py')
-        if version:
+        if version := importlib.metadata.version('discord.py'):
             entries.append(f'    - discord.py metadata: v{version}')
 
     entries.append(f'- aiohttp v{aiohttp.__version__}')
@@ -189,7 +191,7 @@ _base_table: Dict[str, Optional[str]] = {
 }
 
 # NUL (0) and 1-31 are disallowed
-_base_table.update((chr(i), None) for i in range(32))
+_base_table |= ((chr(i), None) for i in range(32))
 
 _translation_table = str.maketrans(_base_table)
 

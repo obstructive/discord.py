@@ -647,11 +647,10 @@ class SyncWebhook(BaseWebhook):
         }
         import requests
 
-        if session is not MISSING:
-            if not isinstance(session, requests.Session):
-                raise TypeError(f'expected requests.Session not {session.__class__.__name__}')
-        else:
+        if session is MISSING:
             session = requests  # type: ignore
+        elif not isinstance(session, requests.Session):
+            raise TypeError(f'expected requests.Session not {session.__class__.__name__}')
         return cls(data, session, token=bot_token)
 
     @classmethod
@@ -690,11 +689,10 @@ class SyncWebhook(BaseWebhook):
         data['type'] = 1
         import requests
 
-        if session is not MISSING:
-            if not isinstance(session, requests.Session):
-                raise TypeError(f'expected requests.Session not {session.__class__.__name__}')
-        else:
+        if session is MISSING:
             session = requests  # type: ignore
+        elif not isinstance(session, requests.Session):
+            raise TypeError(f'expected requests.Session not {session.__class__.__name__}')
         return cls(data, session, token=bot_token)  # type: ignore
 
     def fetch(self, *, prefer_auth: bool = True) -> SyncWebhook:
@@ -1015,24 +1013,21 @@ class SyncWebhook(BaseWebhook):
             raise TypeError('Cannot mix thread_name and thread keyword arguments.')
 
         with handle_message_parameters(
-            content=content,
-            username=username,
-            avatar_url=avatar_url,
-            tts=tts,
-            file=file,
-            files=files,
-            embed=embed,
-            embeds=embeds,
-            thread_name=thread_name,
-            allowed_mentions=allowed_mentions,
-            previous_allowed_mentions=previous_mentions,
-            flags=flags,
-        ) as params:
+                content=content,
+                username=username,
+                avatar_url=avatar_url,
+                tts=tts,
+                file=file,
+                files=files,
+                embed=embed,
+                embeds=embeds,
+                thread_name=thread_name,
+                allowed_mentions=allowed_mentions,
+                previous_allowed_mentions=previous_mentions,
+                flags=flags,
+            ) as params:
             adapter: WebhookAdapter = _get_webhook_adapter()
-            thread_id: Optional[int] = None
-            if thread is not MISSING:
-                thread_id = thread.id
-
+            thread_id = thread.id if thread is not MISSING else None
             data = adapter.execute_webhook(
                 self.id,
                 self.token,
@@ -1079,10 +1074,7 @@ class SyncWebhook(BaseWebhook):
         if self.token is None:
             raise ValueError('This webhook does not have a token associated with it')
 
-        thread_id: Optional[int] = None
-        if thread is not MISSING:
-            thread_id = thread.id
-
+        thread_id = thread.id if thread is not MISSING else None
         adapter: WebhookAdapter = _get_webhook_adapter()
         data = adapter.get_webhook_message(
             self.id,
@@ -1153,17 +1145,14 @@ class SyncWebhook(BaseWebhook):
 
         previous_mentions: Optional[AllowedMentions] = getattr(self._state, 'allowed_mentions', None)
         with handle_message_parameters(
-            content=content,
-            attachments=attachments,
-            embed=embed,
-            embeds=embeds,
-            allowed_mentions=allowed_mentions,
-            previous_allowed_mentions=previous_mentions,
-        ) as params:
-            thread_id: Optional[int] = None
-            if thread is not MISSING:
-                thread_id = thread.id
-
+                content=content,
+                attachments=attachments,
+                embed=embed,
+                embeds=embeds,
+                allowed_mentions=allowed_mentions,
+                previous_allowed_mentions=previous_mentions,
+            ) as params:
+            thread_id = thread.id if thread is not MISSING else None
             adapter: WebhookAdapter = _get_webhook_adapter()
             data = adapter.edit_webhook_message(
                 self.id,
@@ -1206,10 +1195,7 @@ class SyncWebhook(BaseWebhook):
         if self.token is None:
             raise ValueError('This webhook does not have a token associated with it')
 
-        thread_id: Optional[int] = None
-        if thread is not MISSING:
-            thread_id = thread.id
-
+        thread_id = thread.id if thread is not MISSING else None
         adapter: WebhookAdapter = _get_webhook_adapter()
         adapter.delete_webhook_message(
             self.id,

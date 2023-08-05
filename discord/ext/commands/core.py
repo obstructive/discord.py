@@ -21,6 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -97,10 +98,7 @@ CommandT = TypeVar('CommandT', bound='Command[Any, ..., Any]')
 # CHT = TypeVar('CHT', bound='Check')
 GroupT = TypeVar('GroupT', bound='Group[Any, ..., Any]')
 
-if TYPE_CHECKING:
-    P = ParamSpec('P')
-else:
-    P = TypeVar('P')
+P = ParamSpec('P') if TYPE_CHECKING else TypeVar('P')
 
 
 def unwrap_function(function: Callable[..., Any], /) -> Callable[..., Any]:
@@ -142,12 +140,12 @@ def get_signature_parameters(
                 # x = commands.CurrentChannel
                 # In both of these cases, the default parameter has an explicit annotation
                 # but in the second case it's only used as the fallback.
-                if default._fallback:
-                    if parameter.annotation is Parameter.empty:
-                        parameter._annotation = default.annotation
-                else:
+                if (
+                    default._fallback
+                    and parameter.annotation is Parameter.empty
+                    or not default._fallback
+                ):
                     parameter._annotation = default.annotation
-
             parameter._default = default.default
             parameter._description = default._description
             parameter._displayed_default = default._displayed_default
@@ -175,9 +173,7 @@ def _fold_text(input: str) -> str:
     """Turns a single newline into a space, and multiple newlines into a newline."""
 
     def replacer(m: re.Match[str]) -> str:
-        if len(m.group()) <= 1:
-            return ' '
-        return '\n'
+        return ' ' if len(m.group()) <= 1 else '\n'
 
     return re.sub(r'\n+', replacer, inspect.cleandoc(input))
 
@@ -197,8 +193,9 @@ def extract_descriptions_from_docstring(function: Callable[..., Any], params: Di
         name = match.group('name')
 
         if name not in params:
-            is_display_name = discord.utils.get(params.values(), displayed_name=name)
-            if is_display_name:
+            if is_display_name := discord.utils.get(
+                params.values(), displayed_name=name
+            ):
                 name = is_display_name.name
             else:
                 continue
@@ -620,7 +617,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
     def _update_copy(self, kwargs: Dict[str, Any]) -> Self:
         if kwargs:
             kw = kwargs.copy()
-            kw.update(self.__original_kwargs__)
+            kw |= self.__original_kwargs__
             copy = self.__class__(self.callback, **kw)
             return self._ensure_assignment_on_copy(copy)
         else:
@@ -704,11 +701,10 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
             try:
                 ctx.current_argument = argument = view.get_quoted_word()
             except ArgumentParsingError as exc:
-                if self._is_typing_optional(param.annotation):
-                    view.index = previous
-                    return None if param.required else await param.get_default(ctx)
-                else:
+                if not self._is_typing_optional(param.annotation):
                     raise exc
+                view.index = previous
+                return None if param.required else await param.get_default(ctx)
         view.previous = previous
 
         # type-checker fails to narrow argument
@@ -731,9 +727,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
             else:
                 result.append(value)
 
-        if not result and not required:
-            return await param.get_default(ctx)
-        return result
+        return await param.get_default(ctx) if not result and not required else result
 
     async def _transform_greedy_var_pos(self, ctx: Context[BotT], param: Parameter, converter: Any) -> Any:
         view = ctx.view
@@ -807,9 +801,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
 
         For example in commands ``?a b c test``, the root parent is ``a``.
         """
-        if not self.parent:
-            return None
-        return self.parents[-1]
+        return None if not self.parent else self.parents[-1]
 
     @property
     def qualified_name(self) -> str:
@@ -820,9 +812,8 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
         ``one two three``.
         """
 
-        parent = self.full_parent_name
-        if parent:
-            return parent + ' ' + self.name
+        if parent := self.full_parent_name:
+            return f'{parent} {self.name}'
         else:
             return self.name
 
@@ -863,18 +854,14 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
                         break
 
         if not self.ignore_extra and not view.eof:
-            raise TooManyArguments('Too many arguments passed to ' + self.qualified_name)
+            raise TooManyArguments(f'Too many arguments passed to {self.qualified_name}')
 
     async def call_before_hooks(self, ctx: Context[BotT], /) -> None:
         # now that we're done preparing we can call the pre-command hooks
         # first, call the command local hook:
         cog = self.cog
         if self._before_invoke is not None:
-            # should be cog if @commands.before_invoke is used
-            instance = getattr(self._before_invoke, '__self__', cog)
-            # __self__ only exists for methods, not functions
-            # however, if @command.before_invoke is used, it will be a function
-            if instance:
+            if instance := getattr(self._before_invoke, '__self__', cog):
                 await self._before_invoke(instance, ctx)  # type: ignore
             else:
                 await self._before_invoke(ctx)  # type: ignore
@@ -893,8 +880,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
     async def call_after_hooks(self, ctx: Context[BotT], /) -> None:
         cog = self.cog
         if self._after_invoke is not None:
-            instance = getattr(self._after_invoke, '__self__', cog)
-            if instance:
+            if instance := getattr(self._after_invoke, '__self__', cog):
                 await self._after_invoke(instance, ctx)  # type: ignore
             else:
                 await self._after_invoke(ctx)  # type: ignore
@@ -915,8 +901,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
             current = dt.replace(tzinfo=datetime.timezone.utc).timestamp()
             bucket = self._buckets.get_bucket(ctx, current)
             if bucket is not None:
-                retry_after = bucket.update_rate_limit(current)
-                if retry_after:
+                if retry_after := bucket.update_rate_limit(current):
                     raise CommandOnCooldown(bucket, retry_after, self._buckets.type)  # type: ignore
 
     async def prepare(self, ctx: Context[BotT], /) -> None:
@@ -1157,9 +1142,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
         """
         if self.brief is not None:
             return self.brief
-        if self.help is not None:
-            return self.help.split('\n', 1)[0]
-        return ''
+        return self.help.split('\n', 1)[0] if self.help is not None else ''
 
     def _is_typing_optional(self, annotation: Union[T, Optional[T]]) -> bool:
         return getattr(annotation, '__origin__', None) is Union and type(None) in annotation.__args__  # type: ignore
@@ -1280,12 +1263,12 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
                     if not ret:
                         return False
 
-            predicates = self.checks
-            if not predicates:
+            if predicates := self.checks:
+                return await discord.utils.async_all(predicate(ctx) for predicate in predicates)
+            else:
                 # since we have no checks, then we just return True.
                 return True
 
-            return await discord.utils.async_all(predicate(ctx) for predicate in predicates)
         finally:
             ctx.command = original
 

@@ -416,8 +416,11 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
 
         self.brief: Optional[str] = kwargs.get('brief')
         self.usage: Optional[str] = kwargs.get('usage')
+        self.example: Optional[str] = kwargs.get('example')
+        self.information: Dict[str, Any] = kwargs.get('information', {})
         self.rest_is_raw: bool = kwargs.get('rest_is_raw', False)
         self.aliases: Union[List[str], Tuple[str]] = kwargs.get('aliases', [])
+        self.parameters: Dict[Any, Any] = kwargs.get('parameters', {})
         self.extras: Dict[Any, Any] = kwargs.get('extras', {})
 
         if not isinstance(self.aliases, (list, tuple)):

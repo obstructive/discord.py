@@ -378,10 +378,11 @@ class Guild(Hashable):
     def _clear_threads(self) -> None:
         self._threads.clear()
 
-    def _remove_threads_by_channel(self, channel_id: int) -> None:
-        to_remove = [k for k, t in self._threads.items() if t.parent_id == channel_id]
-        for k in to_remove:
-            del self._threads[k]
+    def _remove_threads_by_channel(self, channel_id: int) -> List[Thread]:
+        to_remove = [t for t in self._threads.values() if t.parent_id == channel_id]
+        for thread in to_remove:
+            del self._threads[thread.id]
+        return to_remove
 
     def _filter_threads(self, channel_ids: Set[int]) -> Dict[int, Thread]:
         to_remove: Dict[int, Thread] = {k: t for k, t in self._threads.items() if t.parent_id in channel_ids}
@@ -431,31 +432,18 @@ class Guild(Hashable):
         return member, before, after
 
     def _add_role(self, role: Role, /) -> None:
-        # roles get added to the bottom (position 1, pos 0 is @everyone)
-        # so since self.roles has the @everyone role, we can't increment
-        # its position because it's stuck at position 0. Luckily x += False
-        # is equivalent to adding 0. So we cast the position to a bool and
-        # increment it.
-        for r in self._roles.values():
-            r.position += not r.is_default()
-
         self._roles[role.id] = role
 
     def _remove_role(self, role_id: int, /) -> Role:
         # this raises KeyError if it fails..
-        role = self._roles.pop(role_id)
-
-        # since it didn't, we can change the positions now
-        # basically the same as above except we only decrement
-        # the position if we're above the role we deleted.
-        for r in self._roles.values():
-            r.position -= r.position > role.position
-
-        return role
+        return self._roles.pop(role_id)
 
     @classmethod
-    def _create_unavailable(cls, *, state: ConnectionState, guild_id: int) -> Guild:
-        return cls(state=state, data={'id': guild_id, 'unavailable': True})  # type: ignore
+    def _create_unavailable(cls, *, state: ConnectionState, guild_id: int, data: Optional[Dict[str, Any]]) -> Guild:
+        if data is None:
+            data = {'unavailable': True}
+        data.update(id=guild_id)
+        return cls(state=state, data=data)  # type: ignore
 
     def _from_data(self, guild: GuildPayload) -> None:
         try:
@@ -3864,7 +3852,7 @@ class Guild(Hashable):
 
         The guild must have ``VANITY_URL`` in :attr:`~Guild.features`.
 
-        You must have :attr:`~Permissions.manage_guild` to do this.as well.
+        You must have :attr:`~Permissions.manage_guild` to do this as well.
 
         Raises
         -------
